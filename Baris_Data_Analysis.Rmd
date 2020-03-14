@@ -1,0 +1,118 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+resturant <- readRDS("resturantS-mibe.rds")
+delivery <- readRDS('delivery-mibe.rds')
+
+```
+```{r}
+# importing libraries
+library(ggplot2)
+library(dplyr)
+```
+```{r}
+## RESTAURANT INFORMATION
+
+  #1 Present a column chart with the top 10 neighborhoods by the number of restaurants.
+
+ resturant_object <- table(resturant$rest_neighborhood)
+ resturant_df <- as.data.frame(resturant_object)
+ names(resturant_df) = c('neighborhood','freq')
+ new_data <- resturant_df[order('freq', decreasing = T),]
+ resturant_df<-arrange(resturant_df,desc(freq))
+ top_10 <- head(resturant_df, n = 10)
+ top_10
+```
+```{r}
+# creating a  column chart
+top_10_neighborhood_column_chart <-ggplot(data=top_10, aes(x= reorder(neighborhood, freq) , y=freq)) + geom_bar(stat = "identity") +  coord_flip()
+top_10_neighborhood_column_chart
+```
+```{r}
+  #2 Present a column chart with the top 10 neighborhoods by restaurant review score.
+
+ sum(is.na(resturant$rest_rating)) #checking missing values
+ data1 <-aggregate(resturant$rest_rating,by=list(neighborhoods=resturant$rest_neighborhood), FUN=sum, na.rm = TRUE)
+ data1<-arrange(data1,desc(x))
+ data1<-head(arrange(data1,desc(x)), n=10)
+ data1
+```
+```{r}
+# creating a  column chart
+top_10_neighborhood_column_chart_based_on_review <-ggplot(data=data1, aes(x= reorder(neighborhoods, x) , y=x)) + geom_bar(stat = "identity") +  coord_flip()
+top_10_neighborhood_column_chart_based_on_review
+```
+```{r}
+   #3 Compute the top 10 biggest chains. Present the results in a tabular format. (Use the column rest_brand to determine restaurants of the same brand)
+
+#checking missing values
+
+ sum(is.na(resturant$rest_brand))
+
+ data2 <-as.data.frame(table(resturant["rest_brand"]))
+ ordered1 <-arrange(data2,desc(Freq))
+ordered1 <-head(arrange(data2,desc(Freq)), n=10)# top 10 biggest chains
+ordered1
+```
+```{r}
+## Restaurants Delivery Times
+
+# In this section, you will analyze the restaurant's delivery times.To perform the following analysis, you will need to join the Restaurants information and Restaurants delivery time datasets using their restaurant_id and rest_key primary keys. Answer the following questions:
+
+ #1 Count the number of neighborhoods where each restaurant delivers.
+ delivery <- delivery %>% rename(restaurant_id=rest_key)
+ dataset <- inner_join(resturant, delivery, by = "restaurant_id")
+ dataset %>% group_by(restaurant_id, neighborhood_name)
+```
+
+```{r}
+ dataset <- dataset %>% distinct(restaurant_id, neighborhood_name , .keep_all=TRUE)
+ rows.per.group  <- aggregate(rep(1, length(dataset$restaurant_id)), by=list(dataset$restaurant_id), sum)
+ rows.per.group<-arrange(rows.per.group,desc(x))
+ rows.per.group
+```
+```{r}
+#2 - Present in a bar chart the top 15 neighborhoods by the number of restaurants where restaurants make deliveries.
+
+ rows_neighborhood <- dataset %>% group_by(neighborhood_name) %>% count() %>% arrange(desc(n))
+ rows_neighborhood <- head(rows_neighborhood, n=15)
+ rows_neighborhood
+```
+```{r}
+# Creating a  bar chart
+
+rows_neighborhood %>% ggplot(aes(x=reorder(neighborhood_name,n),y=n)) + geom_bar(stat = "identity") + coord_flip()
+```
+```{r}
+#3 - Compute the average delivery time for each restaurant. 
+
+ averages<-dataset %>% group_by(rest_name) %>% summarise(averages = mean(rest_delivery_time_min))
+averages
+```
+```{r}
+#4 - Present in tabular format the top 20 restaurants by fasted average delivery time. In the same table, present the rating score, and postcode.
+
+ average_time<-arrange(averages,desc(-averages))
+ top_20_neighborhood <- head(average_time, n=20)
+ top_20_neighborhood
+```
+```{r}
+# adding post_code and rest_rating
+
+ dataset2 <- inner_join(top_20_neighborhood, resturant, by = "rest_name")
+ select(dataset2,rest_name , averages, rest_postcode, rest_rating)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
